@@ -297,7 +297,7 @@ def pg_url():
     port = _free_port()
     subprocess.run(
         [pg_ctl, "-D", str(data), "-w", "-l", str(tmp / "pg.log"),
-         "-o", f'-p {port} -c listen_addresses=127.0.0.1'],
+         "-o", f'-p {port} -c listen_addresses=127.0.0.1', "start"],
         check=True, capture_output=True,
     )
     try:
@@ -314,8 +314,6 @@ def engine(pg_url):
     yield eng
     eng.dispose()
 ```
-
-Note: `pg_ctl start` is invoked without the explicit `start` verb bug — the command list above must be `[pg_ctl, "-D", str(data), "-w", "-l", ..., "-o", ..., "start"]`; include the final `"start"` argument.
 
 - [ ] **Step 5: Run test to verify it passes**
 
