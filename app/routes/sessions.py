@@ -63,3 +63,18 @@ def get_current(request: Request, db: OrmSession = Depends(get_db)) -> dict[str,
     if row is None:
         raise HTTPException(status_code=401, detail="no session")
     return {"session_id": str(row.id), "phase": row.phase, "status": row.status}
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def delete_session(session_id: uuid.UUID, request: Request,
+                   db: OrmSession = Depends(get_db)) -> None:
+    sid = current_session_id(request)
+    if sid != session_id:
+        raise HTTPException(status_code=403, detail="not your session")
+    row = db.get(SessionRow, session_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown session")
+    db.delete(row)  # FK cascades clear all child tables
+    record_event(db, session_id=session_id, actor="client",
+                 event_type="session.deleted")
+    db.commit()
