@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import func, select
 
 from app.models import AuditLog, Consent, Figure, Intake, Message, Session
+from app.routes.sessions import SESSION_COOKIE, sign_session_id
 
 
 def _populate(db, sid: uuid.UUID):
@@ -66,3 +67,19 @@ def test_delete_clears_cookie_from_client_jar(client):
     client.delete(f"/sessions/{sid}")
     # Cookie is no longer usable; follow-up request returns 401
     assert client.get("/sessions/current").status_code == 401
+
+
+def test_delete_nonexistent_session_with_valid_cookie_is_404(client):
+    # Create and delete a session
+    sid = client.post("/sessions").json()["session_id"]
+    client.delete(f"/sessions/{sid}")
+
+    # Manually re-arm the client with a validly signed cookie for the deleted sid
+    # (client fixture sets DA_SECRET_KEY=test-secret-key)
+    signed = sign_session_id("test-secret-key", sid)
+    client.cookies.set(SESSION_COOKIE, signed)
+
+    # Try to delete the non-existent session with a valid cookie
+    # Ownership check passes (cookie == path), but existence check fails
+    resp = client.delete(f"/sessions/{sid}")
+    assert resp.status_code == 404
