@@ -66,8 +66,8 @@ def get_current(request: Request, db: OrmSession = Depends(get_db)) -> dict[str,
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
-def delete_session(session_id: uuid.UUID, request: Request,
-                   db: OrmSession = Depends(get_db)) -> None:
+def delete_session(session_id: uuid.UUID, request: Request, response: Response,
+                   db: OrmSession = Depends(get_db)) -> Response:
     sid = current_session_id(request)
     if sid != session_id:
         raise HTTPException(status_code=403, detail="not your session")
@@ -78,3 +78,6 @@ def delete_session(session_id: uuid.UUID, request: Request,
     record_event(db, session_id=session_id, actor="client",
                  event_type="session.deleted")
     db.commit()
+    response = Response(status_code=204)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response

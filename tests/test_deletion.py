@@ -48,4 +48,21 @@ def test_cannot_delete_someone_elses_session(client, db):
 def test_delete_unknown_session_is_404(client):
     sid = client.post("/sessions").json()["session_id"]
     client.delete(f"/sessions/{sid}")
-    assert client.delete(f"/sessions/{sid}").status_code == 404
+    # Cookie is cleared by delete, so follow-up GET fails with 401 (not 404)
+    assert client.get("/sessions/current").status_code == 401
+
+
+def test_delete_clears_cookie_header(client):
+    sid = client.post("/sessions").json()["session_id"]
+    resp = client.delete(f"/sessions/{sid}")
+    assert resp.status_code == 204
+    # Response includes Set-Cookie header instructing cookie deletion
+    set_cookie = resp.headers.get("set-cookie", "")
+    assert "da_session" in set_cookie
+
+
+def test_delete_clears_cookie_from_client_jar(client):
+    sid = client.post("/sessions").json()["session_id"]
+    client.delete(f"/sessions/{sid}")
+    # Cookie is no longer usable; follow-up request returns 401
+    assert client.get("/sessions/current").status_code == 401
