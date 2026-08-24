@@ -27,7 +27,7 @@ AI-led discovery interview → human-reviewed proposal. Specs live in `docs/` (P
 ## Environment facts (this dev machine)
 
 - Windows 11; Python 3.12 at `python`; **no Docker locally** — never require Docker for tests.
-- Tests use a hermetic ephemeral Postgres from local binaries: `PG_BIN` (default `C:\Program Files\PostgreSQL\16\bin`); CI sets `TEST_DATABASE_URL` to a postgres:16 service instead.
+- Tests use a hermetic ephemeral Postgres from local binaries: `tests/conftest.py` auto-discovers the newest installed PostgreSQL bin dir (checks `C:\Program Files\PostgreSQL\18\bin`, then `17`, then `16`); set `PG_BIN` to override. On this machine only PG 18 has binaries installed (16 and 17 have leftover data dirs but no `bin/`). CI sets `TEST_DATABASE_URL` to a postgres:16 service instead.
 - App env vars are prefixed `DA_` (`DA_DATABASE_URL`, `DA_SECRET_KEY`).
 
 ## Commands

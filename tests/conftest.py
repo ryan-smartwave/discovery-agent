@@ -9,7 +9,21 @@ import pytest
 
 from app.db import make_engine
 
-DEFAULT_PG_BIN = r"C:\Program Files\PostgreSQL\16\bin"
+PG_VERSIONS = ("18", "17", "16")
+
+
+def _discover_pg_bin() -> Path:
+    """Find the newest installed PostgreSQL bin dir (checks 18, then 17, then 16)."""
+    for version in PG_VERSIONS:
+        candidate = Path(rf"C:\Program Files\PostgreSQL\{version}\bin")
+        if (candidate / "initdb.exe").exists():
+            return candidate
+    pytest.fail(
+        "No PostgreSQL installation found under C:\\Program Files\\PostgreSQL\\"
+        f"{{{','.join(PG_VERSIONS)}}}\\bin. Set the PG_BIN environment variable to "
+        "your PostgreSQL bin directory, or set TEST_DATABASE_URL to use an external database.",
+        pytrace=False,
+    )
 
 
 def _free_port() -> int:
@@ -26,7 +40,8 @@ def pg_url():
         yield external
         return
 
-    pg_bin = Path(os.environ.get("PG_BIN", DEFAULT_PG_BIN))
+    pg_bin_override = os.environ.get("PG_BIN")
+    pg_bin = Path(pg_bin_override) if pg_bin_override else _discover_pg_bin()
     initdb, pg_ctl = str(pg_bin / "initdb"), str(pg_bin / "pg_ctl")
     tmp = Path(tempfile.mkdtemp(prefix="dapg_"))
     data = tmp / "data"
