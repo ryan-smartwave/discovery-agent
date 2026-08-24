@@ -36,6 +36,11 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's `Depends(...)` default-argument idiom is intentional, not the
+# mutable-default footgun B008 targets (upstream: astral-sh/ruff#4293).
+extend-immutable-calls = ["fastapi.Depends"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 timeout = 120

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from app.db import SessionLocal, make_engine
@@ -102,3 +103,13 @@ def db(engine, migrated):
             conn.execute(text(
                 "TRUNCATE sessions, audit_log RESTART IDENTITY CASCADE"))
             conn.execute(text("ALTER TABLE audit_log ENABLE TRIGGER USER"))
+
+
+@pytest.fixture()
+def client(pg_url, migrated, monkeypatch, db):
+    monkeypatch.setenv("DA_DATABASE_URL", pg_url)
+    monkeypatch.setenv("DA_SECRET_KEY", "test-secret-key")
+    from app.main import create_app
+    app = create_app()
+    with TestClient(app) as c:
+        yield c
