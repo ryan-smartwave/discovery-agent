@@ -39,4 +39,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 timeout = 120
-addopts = "-W ignore::Warning"
+filterwarnings = [
+    "error",
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",  # Starlette httpx→httpx2 transition (upstream: encode/starlette#2204)
+]
