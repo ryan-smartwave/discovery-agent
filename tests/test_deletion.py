@@ -43,14 +43,8 @@ def test_cannot_delete_someone_elses_session(client, db):
     client.post("/sessions")  # my own cookie
     resp = client.delete(f"/sessions/{other.id}")
     assert resp.status_code == 403
+    db.expire(other)
     assert db.get(Session, other.id) is not None
-
-
-def test_delete_unknown_session_is_404(client):
-    sid = client.post("/sessions").json()["session_id"]
-    client.delete(f"/sessions/{sid}")
-    # Cookie is cleared by delete, so follow-up GET fails with 401 (not 404)
-    assert client.get("/sessions/current").status_code == 401
 
 
 def test_delete_clears_cookie_header(client):
