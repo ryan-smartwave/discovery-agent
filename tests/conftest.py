@@ -45,24 +45,28 @@ def pg_url():
     initdb, pg_ctl = str(pg_bin / "initdb"), str(pg_bin / "pg_ctl")
     tmp = Path(tempfile.mkdtemp(prefix="dapg_"))
     data = tmp / "data"
-    subprocess.run(
-        [initdb, "-D", str(data), "-U", "postgres", "-A", "trust", "-E", "UTF8"],
-        check=True, capture_output=True,
-    )
-    port = _free_port()
-    # stdout/stderr must NOT be piped here: pg_ctl's grandchild postgres.exe
-    # inherits those handles on Windows and keeps them open past pg_ctl's own
-    # exit, so a captured pipe read blocks forever. -l already logs to file.
-    subprocess.run(
-        [pg_ctl, "-D", str(data), "-w", "-l", str(tmp / "pg.log"),
-         "-o", f'-p {port} -c listen_addresses=127.0.0.1', "start"],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    started = False
     try:
+        subprocess.run(
+            [initdb, "-D", str(data), "-U", "postgres", "-A", "trust", "-E", "UTF8"],
+            check=True, capture_output=True,
+        )
+        port = _free_port()
+        # stdout/stderr must NOT be piped here: pg_ctl's grandchild postgres.exe
+        # inherits those handles on Windows and keeps them open past pg_ctl's own
+        # exit, so a captured pipe read blocks forever. -l already logs to file.
+        subprocess.run(
+            [pg_ctl, "-D", str(data), "-w", "-l", str(tmp / "pg.log"),
+             "-o", f'-p {port} -c listen_addresses=127.0.0.1', "start"],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        started = True
         yield f"postgresql+psycopg://postgres@127.0.0.1:{port}/postgres"
     finally:
-        subprocess.run([pg_ctl, "-D", str(data), "-m", "immediate", "stop"],
-                       check=True, capture_output=True)
+        if started:
+            # Best-effort: a failed stop must never block the rmtree below.
+            subprocess.run([pg_ctl, "-D", str(data), "-m", "immediate", "stop"],
+                           check=False, capture_output=True)
         shutil.rmtree(tmp, ignore_errors=True)
 
 
