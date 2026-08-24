@@ -6,8 +6,11 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import text
 
-from app.db import make_engine
+from app.db import SessionLocal, make_engine
 
 PG_VERSIONS = ("18", "17", "16")
 
@@ -75,3 +78,27 @@ def engine(pg_url):
     eng = make_engine(pg_url)
     yield eng
     eng.dispose()
+
+
+@pytest.fixture(scope="session")
+def migrated(pg_url):
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", pg_url)
+    command.upgrade(cfg, "head")
+    return True
+
+
+@pytest.fixture()
+def db(engine, migrated):
+    """Function-scoped ORM session; truncates all data tables afterwards."""
+    session = SessionLocal(engine)()
+    try:
+        yield session
+        session.rollback()
+    finally:
+        session.close()
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE audit_log DISABLE TRIGGER USER"))
+            conn.execute(text(
+                "TRUNCATE sessions, audit_log RESTART IDENTITY CASCADE"))
+            conn.execute(text("ALTER TABLE audit_log ENABLE TRIGGER USER"))
