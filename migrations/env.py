@@ -7,7 +7,10 @@ from app import models  # noqa: F401  (registers tables on Base.metadata)
 from app.db import Base
 
 config = context.config
-url = os.environ.get("DA_DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+# An explicit config URL always wins: tests set it directly on the Config object, and
+# that must never be shadowed by an ambient DA_DATABASE_URL (e.g. a dev's local app env)
+# or pytest could silently migrate the developer's real database instead of the test one.
+url = config.get_main_option("sqlalchemy.url") or os.environ.get("DA_DATABASE_URL")
 config.set_main_option("sqlalchemy.url", url)
 target_metadata = Base.metadata
 
